@@ -223,10 +223,11 @@ class MaterialParser:
 
         return output_structure
 
-    def formula2composition(self, formula):
+    def formula2composition(self, formula, elements_vars_suggestions={}):
         """
         Parsing chemical formula in composition
         :param formula: <str> chemical formula
+                elements_vars <dict> supply suggestions for stochiometrics variables, list of values for each dict
         :return: dict(formula: <str> formula string corresponding to obtained composition
                      composition: <dict> element: fraction
                      fraction_vars: <dict> elements fraction variables: <list> values
@@ -257,7 +258,7 @@ class MaterialParser:
             elements_variables["M"] = re.split(r"[\/,]", m.group(0).strip('()'))
             formula = formula.replace(m.group(0), "M", 1)
 
-        composition = self.__parse_formula(formula)
+        composition = self.__parse_formula(formula, list(elements_vars_suggestions.keys()))
 
         if re.findall("[a-z]{4,}", formula) != [] and composition != {}:
             composition = collections.OrderedDict()
@@ -266,9 +267,16 @@ class MaterialParser:
         """
         for el, amt in composition.items():
             if el not in self.__list_of_elements + list(elements_variables.keys()) + ["□"]:
-                elements_variables[el] = []
+                if el in elements_vars_suggestions:
+                    elements_variables[el] = elements_vars_suggestions[el]
+                else:
+                    elements_variables[el] = []
+
             for var in re.findall("[a-z" + "".join(self.__greek_letters) + "]", amt):
-                stoichiometry_variables[var] = []
+                if var in elements_vars_suggestions:
+                    stoichiometry_variables[var] = elements_vars_suggestions[var]
+                else:
+                    stoichiometry_variables[var] = []
 
         rename_variables = [("R", "E"), ("A", "E"), ("T", "M")]
         for v1, v2 in rename_variables:
@@ -388,11 +396,11 @@ class MaterialParser:
 
         return formula_upd, oxy_def, oxy_def_sym
 
-    def __parse_formula(self, init_formula):
+    def __parse_formula(self, init_formula, variables_names_suggestions=[]):
 
         formula_dict = collections.OrderedDict()
 
-        formula_dict = self.__parse_parentheses(init_formula, "1", formula_dict)
+        formula_dict = self.__parse_parentheses(init_formula, "1", formula_dict, variables_names_suggestions)
         """
         refinement of non-variable values
         """
@@ -407,7 +415,7 @@ class MaterialParser:
 
         return formula_dict
 
-    def __parse_parentheses(self, init_formula, init_factor, curr_dict):
+    def __parse_parentheses(self, init_formula, init_factor, curr_dict, suggested_variables=[]):
         r = r"\(((?>[^\(\)]+|(?R))*)\)\s*([-*\.\da-z\+/]*)"
 
         for m in re.finditer(r, init_formula):
@@ -420,7 +428,7 @@ class MaterialParser:
             unit_sym_dict = self.__parse_parentheses(m.group(1), factor, curr_dict)
             init_formula = init_formula.replace(m.group(0), "")
 
-        unit_sym_dict = self.__get_sym_dict(init_formula, init_factor)
+        unit_sym_dict = self.__get_sym_dict(init_formula, init_factor, suggested_variables)
         for el, amt in unit_sym_dict.items():
             if el in curr_dict:
                 if len(curr_dict[el]) == 0:
@@ -432,7 +440,7 @@ class MaterialParser:
 
         return curr_dict
 
-    def __get_sym_dict(self, f, factor):
+    def __get_sym_dict(self, f, factor, suggested_variables=[]):
         sym_dict = collections.OrderedDict()
         r = r"([A-Z□]{1}[a-z]{0,1})\s*([-\*\.\da-z" + "".join(self.__greek_letters) + r"\+\/]*)"
 
@@ -448,7 +456,7 @@ class MaterialParser:
             checking for correct elements names
             """
             el_bin = "{0}{1}".format(str(int(m.group(1)[0] in self.__list_of_elements_1 + ["M", "□"])), str(
-                int(m.group(1) in self.__list_of_elements + ["Ln", "M", "□"])))
+                int(m.group(1) in self.__list_of_elements + suggested_variables + ["Ln", "M", "□"])))
             el, amt = get_code_value(el_bin, m)
             if amt.strip() == "":
                 amt = "1"
