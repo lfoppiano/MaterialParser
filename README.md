@@ -16,12 +16,12 @@ This parser was created in order to address the problem of unification of materi
 
 The installation can be performed directly via `pip`: 
 ```
-pip install git+https://github.com/CederGroupHub/MaterialParser.git
+pip install git+https://github.com/lfoppiano/MaterialParser.git
 ```
 
 or, in two steps: 
 ```
-git clone https://github.com/CederGroupHub/MaterialParser.git
+git clone https://github.com/lfoppiano/MaterialParser.git
 cd MaterialParser
 pip install -r requirements.txt -e .
 ```
